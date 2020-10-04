@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "mutexthr.C": "cpp",
+        "mailboxes.C": "cpp",
+        "pcthreads.C": "cpp",
+        "iostream": "cpp"
+    }
+}
