@@ -50,6 +50,8 @@ struct gridData {
 int row, column;
 //struct gridData GRIDS;
 int GRID[1][MAXGRID][MAXGRID];
+int evenGRID[MAXGRID][MAXGRID];
+int oddGRID[MAXGRID][MAXGRID];
 struct mailbox Mailboxes[MAXTHREAD + 1];
 vector<pthread_t> threadIDs;
 
@@ -67,13 +69,19 @@ void waitforInput(bool);
 void ifPrint(bool, int);
 int checkExitEarly(int, int, int);
 void cleanArray();
+void writeGrid(int, int, int, int);
+int readGrid(int, int, int);
 
 int main(int argc, char **argv)
 {
     /*** define runtime parameters ***/
     int threads, generations;
-    bool PRINT, INPUT = false;
+    bool PRINT = false;
+    bool INPUT = false;
+    cout << PRINT << "PRINT\n";
+    
     readGrid(argv[2]);
+
 
     if (atoi(argv[1]) > MAXTHREAD)
     {
@@ -168,8 +176,6 @@ int main(int argc, char **argv)
         ifPrint(PRINT, g - 1);
         waitforInput(INPUT);
 
-        cleanArray();
-
         sendType(threads, GO);
         /*
         DEAD = true;
@@ -234,7 +240,6 @@ int main(int argc, char **argv)
         g++;
     }
 
-    cout << "we done now\n";
     struct msg *message = (struct msg *)malloc(sizeof(struct msg));
     for (int i = 1; i <= threads; i++)
     {
@@ -250,19 +255,21 @@ void *thread(void *arg)
     Name = (long)arg;
     bool DONE = false;
     gen = 1;
+    check = 0;
 
     struct msg *message = (struct msg *)malloc(sizeof(struct msg));
     reciveMsg(Name, *message);
-    cout << "got it" << Name << '\n';
+    //cout << "got it" << Name << '\n';
     startRow = message->rowMin;
     endRow = message->rowMax;
     genMax = message->generation;
     while (!DONE)
     {
         reciveMsg(Name, *message);
-        //calcGrid(startRow, endRow, gen);
+        
+        calcGrid(startRow, endRow, gen);
         check = 0; // checkExitEarly(startRow, endRow, gen);
-        cout << "check val" <<check << "\n";
+        //cout << "check val" <<check << "\n";
         if (check == 0)
         {
             message->type = GENDONE;
@@ -308,11 +315,11 @@ int checkExitEarly(int startRow, int endRow, int gen)
         {
             if (STATIC)
             {
-                STATIC = GRID[0][i][j] == GRID[1][i][j];
+                STATIC = readGrid(i,j,0) == readGrid(i,j,1);
             }
             if (DEAD)
             {
-                DEAD = GRID[x][i][j] == 0;
+                DEAD = readGrid(i,j,0) == 0;
             }
         }
     }
@@ -337,43 +344,35 @@ void calcGrid(int startRow, int endRow, int gen)
     int near;
     if (gen % 2 != 0)
         x = 1;
-    //printGrid(0);
-    //cout << "gird 0^\n" << "calcing" << x << "\n";
-    //printGrid(1);
     for (int i = startRow; i <= endRow; i++)
     { // row
         for (int j = 0; j <= column; j++)
         { // column
             near = neighbors(i, j, !x);
-            //cout << near << " " << i << " " << j << "\n";
-            if (GRID[!x][i][j] == 1)
+            if (readGrid(i,j,x) == 1)
             {
                 if (near != 2 && near != 3)
                 {
-                    GRID[x][i][j] = 0;
+                    writeGrid(i,j,x,0);
                 }
                 else
                 {
-                    GRID[x][i][j] = 1;
+                    writeGrid(i,j,x,1);
                 }
             }
             else
             {
                 if (near == 3)
                 {
-                    GRID[x][i][j] = 1;
+                    writeGrid(i,j,x,1);
                 }
                 else
                 {
-                    GRID[x][i][j] = 0;
+                    writeGrid(i,j,x,0);
                 }
             }
         }
     }
-    //cout << "end\n";
-    //printGrid(0);
-    //cout << "gird 0^\n" << "calcing" << x << "\n";
-    //printGrid(1);
 }
 
 int neighbors(int rowpos, int columnpos, int gridnum)
@@ -387,11 +386,11 @@ int neighbors(int rowpos, int columnpos, int gridnum)
             {
                 if ((j + columnpos) >= 0 || (j + columnpos) <= column)
                 {
-                    neighbors += GRID[gridnum][rowpos + i][columnpos + j];
+                    neighbors += readGrid(rowpos+i,columnpos+j,gridnum); //GRID[gridnum][rowpos + i][columnpos + j];
                 }
                 if (j == 0 && i == 0)
                 {
-                    neighbors += (-1) * GRID[gridnum][rowpos + i][columnpos + j];
+                    neighbors -= readGrid(rowpos+i,columnpos+j,gridnum); 
                 }
             }
         }
@@ -449,12 +448,14 @@ void readGrid(const char *file)
             {
                 if (line[i] == '0')
                 {
-                    GRID[0][row][column] = 0;
+                    writeGrid(row,column,0,0);
+                    //GRID[0][row][column] = 0;
                     column += 1;
                 }
                 else if (line[i] == '1')
                 {
-                    GRID[0][row][column] = 1;
+                    writeGrid(row,column,0,1);
+                    //GRID[0][row][column] = 1;
                     column += 1;
                 }
             }
@@ -485,22 +486,18 @@ void waitforInput(bool enabled)
 
 void printGrid(int grid)
 {
-    int x;
-    if (grid % 2 == 0)
-    {
-        x = 0;
-    }
-    else
-    {
-        x = 1;
-    }
+    int x = 0;
+    if (grid % 2 != 0) x = 1;
+
     for (int i = 0; i < row; i++)
     {
         for (int j = 0; j < column; j++)
         {
-            cout << GRID[x][i][j] << " ";
+            cout << readGrid(i,j,x) << " ";
+            cout.flush();
         }
         cout << "\n";
+        cout.flush();
     }
 }
 
@@ -513,8 +510,10 @@ void printGrid2(int grid)
             for (int j = 0; j < column; j++)
             {
                 cout << GRID[x][i][j] << " ";
+                cout.flush();
             }
             cout << "\n";
+            cout.flush();
         }
     }
 }
@@ -526,6 +525,24 @@ void cleanArray(){
                 GRID[x][i][j] = 0;
             }
         }
+    }
+}
+
+int readGrid(int i, int j, int grid){
+    if(grid % 2 != 0){
+        //odd
+        return oddGRID[i][j];
+    }else{
+        //even
+        return evenGRID[i][j];
+    }
+}
+
+void writeGrid(int i, int j, int grid, int val){
+    if(grid % 2 != 0){
+        oddGRID[i][j] = val;
+    }else{
+        evenGRID[i][j] = val;
     }
 }
 
