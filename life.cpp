@@ -66,13 +66,13 @@ int neighbors(int, int, int);
 void waitforInput(bool);
 void ifPrint(bool, int);
 int checkExitEarly(int, int, int);
+void cleanArray();
 
 int main(int argc, char **argv)
 {
     /*** define runtime parameters ***/
     int threads, generations;
     bool PRINT, INPUT = false;
-
     readGrid(argv[2]);
 
     if (atoi(argv[1]) > MAXTHREAD)
@@ -116,6 +116,7 @@ int main(int argc, char **argv)
             INPUT = true;
         }
     }
+    cout << "PRINT\n";
     cout << PRINT << "\n";
     /*** end param block ***/
 
@@ -159,6 +160,7 @@ int main(int argc, char **argv)
     bool DEAD = false;
     bool STATIC = false;
     int g = 1;
+    cout << threads << "\n";
     while (!exit)
     {
         cout.flush();
@@ -166,16 +168,18 @@ int main(int argc, char **argv)
         ifPrint(PRINT, g - 1);
         waitforInput(INPUT);
 
-        sendType(threads, GO);
+        cleanArray();
 
+        sendType(threads, GO);
+        /*
         DEAD = true;
-        STATIC = true;
+        STATIC = true; 
+        */
         struct msg *message = (struct msg *)malloc(sizeof(struct msg));
         for (int i = 1; i <= threads; i++)
         {
             reciveMsg(0, *message);
-            //add end early logic here
-            cout << message->type << "\n";
+            /*
             bool addThis = false;
             if (DEAD)
             {
@@ -193,7 +197,7 @@ int main(int argc, char **argv)
             if (addThis)
             {
                 pendingDeath.push_back(i);
-            }
+            }*/
         }
 
         free(message);
@@ -203,7 +207,7 @@ int main(int argc, char **argv)
             exit = true;
             cout << "last generation at GEN " << g << "\n";
             ifPrint(PRINT, g);
-        }
+        }/*
         else if (DEAD)
         {
             exit = true;
@@ -226,10 +230,11 @@ int main(int argc, char **argv)
                 cout << "thread is revived: " << pendingDeath.back() << "\n";
                 pendingDeath.pop_back();
             }
-        }
+        }*/
         g++;
     }
 
+    cout << "we done now\n";
     struct msg *message = (struct msg *)malloc(sizeof(struct msg));
     for (int i = 1; i <= threads; i++)
     {
@@ -248,19 +253,20 @@ void *thread(void *arg)
 
     struct msg *message = (struct msg *)malloc(sizeof(struct msg));
     reciveMsg(Name, *message);
+    cout << "got it" << Name << '\n';
     startRow = message->rowMin;
     endRow = message->rowMax;
     genMax = message->generation;
     while (!DONE)
     {
         reciveMsg(Name, *message);
-        calcGrid(startRow, endRow, gen);
-        check = checkExitEarly(startRow, endRow, gen);
+        //calcGrid(startRow, endRow, gen);
+        check = 0; // checkExitEarly(startRow, endRow, gen);
         cout << "check val" <<check << "\n";
         if (check == 0)
         {
             message->type = GENDONE;
-        }
+        }/*
         else if (check == 1)
         {
             message->type = UNCHANGED;
@@ -270,15 +276,16 @@ void *thread(void *arg)
         {
             message->type = ALLDEAD;
             DONE = true;
-        }
+        }*/
         message->iSender = Name;
         message->generation = gen;
         sendMsg(0, *message);
+        /*
         if (DONE)
         {
             reciveMsg(Name, *message);
             DONE = message->type == DIE;
-        }
+        }*/
         gen++;
         if (gen > genMax)
             DONE = true;
@@ -508,6 +515,16 @@ void printGrid2(int grid)
                 cout << GRID[x][i][j] << " ";
             }
             cout << "\n";
+        }
+    }
+}
+
+void cleanArray(){
+    for(int x = 0; x <= 1; x++){
+        for(int i = 0; i <=row; i++){
+            for(int j = 0; j <=column; j++){
+                GRID[x][i][j] = 0;
+            }
         }
     }
 }
